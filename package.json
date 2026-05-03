@@ -1,0 +1,45 @@
+{
+  "name": "btl-app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@supabase/auth-ui-react": "^0.4.7",
+    "@supabase/auth-ui-shared": "^0.1.8",
+    "@supabase/ssr": "^0.10.2",
+    "@supabase/supabase-js": "^2.105.1",
+    "@tailwindcss/postcss": "^4.2.4",
+    "@vercel/analytics": "^2.0.1",
+    "alex": "^11.0.1",
+    "autoprefixer": "^10.5.0",
+    "languagetool-api": "^1.1.2",
+    "next": "^16.2.4",
+    "postcss": "^8.5.13",
+    "react": "^19.2.5",
+    "react-diff-viewer-continued": "^4.2.2",
+    "react-dom": "^19.2.5",
+    "tailwindcss": "^4.2.4",
+    "write-good": "^1.0.8"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "dotenv": "^17.4.2",
+    "eslint": "^10.3.0",
+    "eslint-config-next": "^16.2.4",
+    "prettier": "^3.8.3",
+    "supabase": "^2.98.0",
+    "typescript": "^6.0.3"
+  }
+}
