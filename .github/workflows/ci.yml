@@ -23,6 +23,9 @@ jobs:
         run: npx tsc --noEmit
       - name: Build
         run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://btkgluxvrnnhfnbcmlwz.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0a2dsdXh2cm5uaGZuYmNtbHd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3MzQ4NjgsImV4cCI6MjA5MzMxMDg2OH0.D0mpeD2glwUe1sVVSICsomyXVkq6qDnZOwPI5ip9_fY
 
   deploy:
     name: Deploy to Vercel
