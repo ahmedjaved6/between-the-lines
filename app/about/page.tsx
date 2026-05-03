@@ -1,6 +1,9 @@
 'use client';
 
+import { useApp } from '../context/AppContext';
+
 export default function AboutPage() {
+  const { openModal } = useApp();
   return (
     <div className="page-transition">
       <div id="hero">
@@ -12,7 +15,7 @@ export default function AboutPage() {
           <button className="btn-ink" onClick={() => window.location.href='/stories'}>
             Explore Stories <i className="fas fa-arrow-right" style={{ fontSize: '12px', marginLeft: '4px' }}></i>
           </button>
-          <button className="btn-outline">Join the Waitlist</button>
+          <button className="btn-outline" onClick={() => openModal('waitlist')}>Join the Waitlist</button>
         </div>
       </div>
       

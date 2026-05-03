@@ -45,6 +45,7 @@ interface AppState {
   isListener: boolean;
   publishedStories: any[];
   activeStoryId: number | null;
+  activeModal: 'waitlist' | 'safety' | 'redflag' | null;
 }
 
 interface AppContextType extends AppState {
@@ -56,6 +57,8 @@ interface AppContextType extends AppState {
   setIsListener: (val: boolean) => void;
   publishStory: (story: any) => void;
   setActiveStoryId: (id: number | null) => void;
+  openModal: (type: 'waitlist' | 'safety' | 'redflag') => void;
+  closeModal: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -72,6 +75,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     isListener: false,
     publishedStories: [],
     activeStoryId: null,
+    activeModal: null,
   });
 
   const [isLoaded, setIsLoaded] = useState(false);
@@ -132,7 +136,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       applyAsGuide, 
       setIsListener,
       publishStory,
-      setActiveStoryId
+      setActiveStoryId,
+      openModal: (type: 'waitlist' | 'safety' | 'redflag') => setState((s) => ({ ...s, activeModal: type })),
+      closeModal: () => setState((s) => ({ ...s, activeModal: null }))
     }}>
       {children}
     </AppContext.Provider>

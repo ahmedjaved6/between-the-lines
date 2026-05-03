@@ -24,7 +24,9 @@ export default function ChatPage() {
   const [showAuthNudge, setShowAuthNudge] = useState(false);
   const [email, setEmail] = useState('');
   const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [isRedFlagged, setIsRedFlagged] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { openModal } = useApp();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -33,6 +35,24 @@ export default function ChatPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, isTyping]);
+
+  useEffect(() => {
+    window.addEventListener('resume-chat', resumeChat);
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('restoreChat') === 'true') {
+      const saved = localStorage.getItem('btl4_pending_chat');
+      if (saved) {
+        try {
+          const { messages: savedMsgs, thought } = JSON.parse(saved);
+          setMessages(savedMsgs);
+          setOpeningThought(thought);
+          setScreen('active');
+          localStorage.removeItem('btl4_pending_chat');
+        } catch (e) { console.error(e); }
+      }
+    }
+    return () => window.removeEventListener('resume-chat', resumeChat);
+  }, []);
 
   const startChat = () => {
     setScreen('connecting');
@@ -85,168 +105,200 @@ export default function ChatPage() {
     triggerReply(chatIdx);
   };
 
+  const raiseRedFlag = () => {
+    setIsRedFlagged(true);
+    openModal('redflag');
+  };
+
+  const resumeChat = () => {
+    setIsRedFlagged(false);
+    const now = new Date();
+    const time = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+    setMessages(prev => [...prev, { dir: 'in', text: "A moderator has checked in. I'm still here \u2014 take a breath. We can continue whenever you're ready.", time }]);
+  };
+
   const handleGoogleSignIn = async () => {
+    localStorage.setItem('btl4_pending_chat', JSON.stringify({ messages, thought: openingThought }));
     await supabase.auth.signInWithOAuth({ 
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`
-      }
+        redirectTo: `${window.location.origin}/auth/callback?next=/?restoreChat=true`,
+      },
     });
   };
 
   const handleMagicLinkSignIn = async () => {
     if (!email) return;
+    localStorage.setItem('btl4_pending_chat', JSON.stringify({ messages, thought: openingThought }));
     const { error } = await supabase.auth.signInWithOtp({ 
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=/?restoreChat=true`
       }
     });
     if (!error) setMagicLinkSent(true);
   };
 
   return (
-    <div className="chat-outer page-transition">
-      {showAuthNudge && !session && (
-        <div className="paper-card" style={{ marginBottom: '20px', border: '1px solid var(--crimson)', padding: '15px' }}>
-          <p style={{ fontSize: '14px', marginBottom: '10px' }}>
-            ❖ <strong>Would you like to save this conversation and continue?</strong> Sign in with Google or email magic link.
-          </p>
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <button className="btn-ink" onClick={handleGoogleSignIn} style={{ padding: '6px 12px', fontSize: '13px' }}>
-              Sign in with Google
-            </button>
-            {!magicLinkSent ? (
-              <div style={{ display: 'flex', gap: '5px' }}>
-                <input 
-                  type="email" 
-                  placeholder="your@email.com" 
-                  value={email} 
-                  onChange={(e) => setEmail(e.target.value)}
-                  style={{ width: '180px', padding: '6px', fontSize: '13px' }}
-                />
-                <button className="btn-outline" onClick={handleMagicLinkSignIn} style={{ padding: '6px 12px', fontSize: '13px' }}>
-                  Send magic link
-                </button>
-              </div>
-            ) : (
-              <span className="tag sage">Magic link sent! Check your inbox.</span>
-            )}
-            <button 
-              className="wiz-back" 
-              onClick={() => setShowAuthNudge(false)}
-              style={{ textDecoration: 'none', fontSize: '13px' }}
-            >
-              Dismiss
-            </button>
-          </div>
+    <div className="page-transition lantern-glow-subtle" style={{ minHeight: '100vh' }}>
+      <div className="content-with-margin">
+        <div className="marginalia" aria-hidden="true">
+          <div className="margin-item"><i className="fas fa-link"></i><span className="margin-label">connect</span></div>
+          <div className="margin-item"><i className="fas fa-shield-halved"></i><span className="margin-label">safe</span></div>
         </div>
-      )}
-      {screen === 'start' && (
-        <div id="chat-start-screen">
-          <div className="chat-start-hero" style={{ marginBottom: '28px' }}>
-            <span className="tag">Anonymous SafeChat</span>
-            <h2 style={{ marginTop: '14px' }}>What's weighing<br />on you today?</h2>
-            <p style={{ marginTop: '12px' }}>Connected with a trained peer Listener. Anonymous. Moderated. Human.</p>
-            <span className="listener-avail">
-              <i className="fas fa-circle" style={{ fontSize: '8px', color: '#4ade80', marginRight: '5px' }}></i>
-              3 Listeners available now &middot; Avg response &lt; 2 min
-            </span>
-          </div>
-          <div className="chat-start-area">
-            <label style={{ fontFamily: 'var(--hand)', fontSize: '19px', color: 'var(--ink-3)', display: 'block', marginBottom: '8px' }}>
-              Begin here, or just press Connect
-            </label>
-            <textarea 
-              placeholder="I've been carrying something&hellip;" 
-              value={openingThought}
-              onChange={(e) => setOpeningThought(e.target.value)}
-            />
-            <button className="chat-connect-btn" onClick={startChat}>
-              <i className="fas fa-link" style={{ marginRight: '8px' }}></i>Connect with a Listener
-            </button>
-            <p className="chat-disclaimer">
-              Peer support space, not a crisis service. Conversations are moderated for safety. In immediate danger? <a href="#">See helplines</a>.
-            </p>
-          </div>
-        </div>
-      )}
 
-      {screen === 'connecting' && (
-        <div id="connecting-screen" style={{ display: 'block' }}>
-          <div className="breath-ring" aria-hidden="true"></div>
-          <h3>Finding your Listener&hellip;</h3>
-          <p>Anonymous &middot; Safe &middot; Human</p>
-        </div>
-      )}
-
-      {screen === 'active' && (
-        <div id="chat-screen" style={{ display: 'block' }}>
-          <div className="chat-header">
-            <div className="listener-info">
-              <div className="listener-av" aria-hidden="true"><i className="fas fa-user"></i></div>
-              <div className="listener-name-block">
-                <div className="name">Arjun L.</div>
-                <div className="sub">Peer Listener &middot; Active now</div>
-              </div>
-            </div>
-            <div className="chat-actions">
-              <button className="flag-btn"><i className="fas fa-flag"></i> Red Flag</button>
-              <button className="end-chat-btn" onClick={() => setScreen('post')}>End Chat</button>
-            </div>
-          </div>
-          <div className="chat-messages" id="chat-messages">
-            {messages.map((m, i) => (
-              <div key={i} className={`bubble bubble-${m.dir}`}>
-                {m.text}
-                <div className="bubble-time">{m.time}</div>
-              </div>
-            ))}
-            {isTyping && (
-              <div className="typing-bub">
-                <div className="tdot"></div>
-                <div className="tdot"></div>
-                <div className="tdot"></div>
+        <div className="main-content">
+          <div className="chat-outer">
+            {showAuthNudge && !session && (
+              <div className="paper-card" style={{ marginBottom: '20px', border: '1px solid var(--crimson)', padding: '15px' }}>
+                <p style={{ fontSize: '14px', marginBottom: '10px' }}>
+                  ❖ <strong>Would you like to save this conversation and continue?</strong> Sign in with Google or email magic link.
+                </p>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <button className="btn-ink" onClick={handleGoogleSignIn} style={{ padding: '6px 12px', fontSize: '13px' }}>
+                    Sign in with Google
+                  </button>
+                  {!magicLinkSent ? (
+                    <div style={{ display: 'flex', gap: '5px' }}>
+                      <input 
+                        type="email" 
+                        placeholder="your@email.com" 
+                        value={email} 
+                        onChange={(e) => setEmail(e.target.value)}
+                        style={{ width: '180px', padding: '6px', fontSize: '13px' }}
+                      />
+                      <button className="btn-outline" onClick={handleMagicLinkSignIn} style={{ padding: '6px 12px', fontSize: '13px' }}>
+                        Send magic link
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="tag sage">Magic link sent! Check your inbox.</span>
+                  )}
+                  <button 
+                    className="wiz-back" 
+                    onClick={() => setShowAuthNudge(false)}
+                    style={{ textDecoration: 'none', fontSize: '13px' }}
+                  >
+                    Dismiss
+                  </button>
+                </div>
               </div>
             )}
-            <div ref={messagesEndRef} />
-          </div>
-          <div className="chat-input-area">
-            <div className="chat-input-row" style={{ display: 'flex', gap: '10px' }}>
-              <input 
-                type="text" 
-                placeholder="Type your message&hellip;" 
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-                style={{ flex: 1, borderRadius: '4px' }}
-              />
-              <button className="send-btn" onClick={sendMessage} style={{ background: 'var(--ink)', color: 'var(--paper)', padding: '0 20px', borderRadius: '4px' }}>
-                <i className="fas fa-paper-plane"></i>
-              </button>
-            </div>
-            <p className="chat-disclaimer" style={{ marginTop: '10px' }}>
-              Peer support only. Messages monitored for safety. <a href="#">Safety Pledge</a>
-            </p>
-          </div>
-        </div>
-      )}
+            {screen === 'start' && (
+              <div id="chat-start-screen">
+                <div className="chat-start-hero" style={{ marginBottom: '28px' }}>
+                  <span className="tag">Anonymous SafeChat</span>
+                  <h2 style={{ marginTop: '14px' }}>What's weighing<br />on you today?</h2>
+                  <p style={{ marginTop: '12px' }}>Connected with a trained peer Listener. Anonymous. Moderated. Human.</p>
+                  <span className="listener-avail">
+                    <i className="fas fa-circle" style={{ fontSize: '8px', color: '#4ade80', marginRight: '5px' }}></i>
+                    3 Listeners available now &middot; Avg response &lt; 2 min
+                  </span>
+                </div>
+                <div className="chat-start-area">
+                  <label style={{ fontFamily: 'var(--hand)', fontSize: '19px', color: 'var(--ink-3)', display: 'block', marginBottom: '8px' }}>
+                    Begin here, or just press Connect
+                  </label>
+                  <textarea 
+                    placeholder="I've been carrying something&hellip;" 
+                    value={openingThought}
+                    onChange={(e) => setOpeningThought(e.target.value)}
+                  />
+                  <button className="chat-connect-btn" onClick={startChat}>
+                    <i className="fas fa-link" style={{ marginRight: '8px' }}></i>Connect with a Listener
+                  </button>
+                  <p className="chat-disclaimer">
+                    Peer support space, not a crisis service. Conversations are moderated for safety. In immediate danger? <a href="#">See helplines</a>.
+                  </p>
+                </div>
+              </div>
+            )}
 
-      {screen === 'post' && (
-        <div id="post-chat-screen" style={{ display: 'block' }}>
-          <div className="post-icon"><i className="fas fa-heart"></i></div>
-          <h3>Thank you for being here.</h3>
-          <p>It takes something to say it out loud, even here.</p>
-          <div className="listener-note-card">
-            "You are not alone. Others have walked this exact path &mdash; and found light on the other side. The courage it takes to say something, even here, is not small."
-            <span className="note-attr">&mdash; Arjun L., Peer Listener</span>
-          </div>
-          <div className="post-btns">
-            <button className="btn-ink" onClick={() => window.location.href='/circles'}>Explore Circles</button>
-            <button className="btn-outline" onClick={() => window.location.href='/profile'}>Write a Reflection</button>
+            {screen === 'connecting' && (
+              <div id="connecting-screen" style={{ display: 'block' }}>
+                <div className="breath-ring" aria-hidden="true"></div>
+                <h3>Finding your Listener&hellip;</h3>
+                <p>Anonymous &middot; Safe &middot; Human</p>
+              </div>
+            )}
+
+            {screen === 'active' && (
+              <div id="chat-screen" style={{ display: 'block' }}>
+                <div className="chat-header">
+                  <div className="listener-info">
+                    <div className="listener-av" aria-hidden="true"><i className="fas fa-user"></i></div>
+                    <div className="listener-name-block">
+                      <div className="name">Arjun L.</div>
+                      <div className="sub">Peer Listener &middot; Active now</div>
+                    </div>
+                  </div>
+                  <div className="chat-actions">
+                    <button className="flag-btn" onClick={raiseRedFlag} aria-label="Raise a Red Flag concern">
+                      <i className="fas fa-flag"></i> Red Flag
+                    </button>
+                    <button className="end-chat-btn" onClick={() => setScreen('post')}>End Chat</button>
+                  </div>
+                </div>
+                <div className="chat-messages" id="chat-messages">
+                  {messages.map((m, i) => (
+                    <div key={i} className={`bubble bubble-${m.dir}`}>
+                      {m.text}
+                      <div className="bubble-time">{m.time}</div>
+                    </div>
+                  ))}
+                  {isTyping && (
+                    <div className="typing-bub">
+                      <div className="tdot"></div>
+                      <div className="tdot"></div>
+                      <div className="tdot"></div>
+                    </div>
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+                <div className="chat-input-area" style={{ opacity: isRedFlagged ? 0.4 : 1, pointerEvents: isRedFlagged ? 'none' : 'auto' }}>
+                  <div className="chat-input-row" style={{ display: 'flex', gap: '10px' }}>
+                    <input 
+                      type="text" 
+                      placeholder="Type your message&hellip;" 
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+                      style={{ flex: 1, borderRadius: '4px' }}
+                    />
+                    <button className="send-btn" onClick={sendMessage} style={{ background: 'var(--ink)', color: 'var(--paper)', padding: '0 20px', borderRadius: '4px' }}>
+                      <i className="fas fa-paper-plane"></i>
+                    </button>
+                  </div>
+                  <p className="chat-disclaimer" style={{ marginTop: '10px' }}>
+                    Peer support only. Messages monitored for safety. <a href="#" onClick={(e) => { e.preventDefault(); openModal('safety'); }}>Safety Pledge</a>
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {screen === 'post' && (
+              <div id="post-chat-screen" style={{ display: 'block' }}>
+                <div className="post-icon"><i className="fas fa-heart"></i></div>
+                <h3>Thank you for being here.</h3>
+                <p>It takes something to say it out loud, even here.</p>
+                <div className="listener-note-card">
+                  "You are not alone. Others have walked this exact path &mdash; and found light on the other side. The courage it takes to say something, even here, is not small."
+                  <span className="note-attr">&mdash; Arjun L., Peer Listener</span>
+                </div>
+                <div className="post-btns">
+                  <button className="btn-ink" onClick={() => window.location.href='/circles'}>Explore Circles</button>
+                  <button className="btn-outline" onClick={() => window.location.href='/profile'}>Write a Reflection</button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-      )}
+
+        <div className="marginalia marginalia-right" aria-hidden="true">
+          <div className="margin-item" style={{ marginTop: '100px' }}><div style={{ width: '1px', height: '40px', background: 'var(--border)' }}></div></div>
+          <div className="margin-item"><div style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--crimson)', opacity: 0.4 }}></div></div>
+        </div>
+      </div>
     </div>
   );
 }
