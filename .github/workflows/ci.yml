@@ -50,7 +50,7 @@ jobs:
           GOOGLE_CLIENT_SECRET: dummy
 
       - name: Deploy to Vercel
-        run: npx vercel@latest deploy --prod --token ${{ secrets.VERCEL_TOKEN }} --yes
+        run: npx vercel@latest deploy --prod --token ${{ secrets.VERCEL_TOKEN }} --yes --build-env NEXT_PUBLIC_SUPABASE_URL="https://btkgluxvrnnhfnbcmlwz.supabase.co" --build-env NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0a2dsdXh2cm5uaGZuYmNtbHd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3MzQ4NjgsImV4cCI6MjA5MzMxMDg2OH0.D0mpeD2glwUe1sVVSICsomyXVkq6qDnZOwPI5ip9_fY" --env NEXT_PUBLIC_SUPABASE_URL="https://btkgluxvrnnhfnbcmlwz.supabase.co" --env NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0a2dsdXh2cm5uaGZuYmNtbHd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3MzQ4NjgsImV4cCI6MjA5MzMxMDg2OH0.D0mpeD2glwUe1sVVSICsomyXVkq6qDnZOwPI5ip9_fY"
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
