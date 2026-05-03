@@ -22,8 +22,8 @@
   --shadow-lift:  2px 3px 0 rgba(26,20,8,0.05), 6px 12px 28px rgba(26,20,8,0.13);
   --serif:   'Cormorant Garamond', Georgia, serif;
   --lora:    'Lora', Georgia, serif;
-  --hand: 'Great Vibes', 'Alex Brush', 'Dancing Script', cursive;
-  --hand-alt: 'La Belle Aurore', 'Caveat', 'Great Vibes', cursive;
+  --hand: 'Handlee', cursive;
+  --hand-alt: 'Handlee', cursive;
   --settle:  cubic-bezier(0.22,0.68,0.36,1.02);
   --unfurl:  cubic-bezier(0.16,1,0.3,1);
 }
