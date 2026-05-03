@@ -26,6 +26,7 @@ export default function ProfilePage() {
             theme="light"
             providers={['google']}
             magicLink={true}
+            redirectTo={typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined}
           />
           {!profile && (
             <div style={{ marginTop: '40px', borderTop: '1px dashed var(--border)', paddingTop: '20px' }}>

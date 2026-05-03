@@ -86,12 +86,22 @@ export default function ChatPage() {
   };
 
   const handleGoogleSignIn = async () => {
-    await supabase.auth.signInWithOAuth({ provider: 'google' });
+    await supabase.auth.signInWithOAuth({ 
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`
+      }
+    });
   };
 
   const handleMagicLinkSignIn = async () => {
     if (!email) return;
-    const { error } = await supabase.auth.signInWithOtp({ email });
+    const { error } = await supabase.auth.signInWithOtp({ 
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`
+      }
+    });
     if (!error) setMagicLinkSent(true);
   };
 
