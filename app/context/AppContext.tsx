@@ -46,6 +46,7 @@ interface AppState {
   publishedStories: any[];
   activeStoryId: number | null;
   activeModal: 'waitlist' | 'safety' | 'redflag' | null;
+  theme: 'light' | 'dark';
 }
 
 interface AppContextType extends AppState {
@@ -59,6 +60,7 @@ interface AppContextType extends AppState {
   setActiveStoryId: (id: number | null) => void;
   openModal: (type: 'waitlist' | 'safety' | 'redflag') => void;
   closeModal: () => void;
+  toggleTheme: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -76,6 +78,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     publishedStories: [],
     activeStoryId: null,
     activeModal: null,
+    theme: 'light',
   });
 
   const [isLoaded, setIsLoaded] = useState(false);
@@ -95,6 +98,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     if (isLoaded) {
       localStorage.setItem('btl4', JSON.stringify(state));
+      document.documentElement.setAttribute('data-theme', state.theme);
     }
   }, [state, isLoaded]);
 
@@ -138,7 +142,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       publishStory,
       setActiveStoryId,
       openModal: (type: 'waitlist' | 'safety' | 'redflag') => setState((s) => ({ ...s, activeModal: type })),
-      closeModal: () => setState((s) => ({ ...s, activeModal: null }))
+      closeModal: () => setState((s) => ({ ...s, activeModal: null })),
+      toggleTheme: () => setState((s) => ({ ...s, theme: s.theme === 'light' ? 'dark' : 'light' }))
     }}>
       {children}
     </AppContext.Provider>

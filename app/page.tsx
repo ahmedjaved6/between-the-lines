@@ -3,6 +3,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useApp } from './context/AppContext';
 import { useAuth } from '@/app/providers';
+import { getOrCreateSessionToken, USE_REAL_CHAT } from '@/utils/anonymousSession';
+import { createSessionChannel, broadcastMessage, subscribeToMessages } from '@/utils/supabase/realtime';
+import { scanMessage } from '@/utils/safetyScanner';
+import { RealtimeChannel } from '@supabase/supabase-js';
+import AuthNudgeBanner from './components/AuthNudgeBanner';
+import { USE_REAL_AUTH, signInAnonymously } from '@/utils/supabase/anonymousAuth';
 
 const CHAT_SCRIPT = [
   { text: "Hello. I'm Arjun, and I'm here with you today. You don't have to perform or explain everything at once. How are you feeling right now \u2014 in just a few words?", delay: 0 },
@@ -21,11 +27,12 @@ export default function ChatPage() {
   const [inputValue, setInputValue] = useState('');
   const [chatIdx, setChatIdx] = useState(0);
   const [messageCount, setMessageCount] = useState(0);
-  const [showAuthNudge, setShowAuthNudge] = useState(false);
+  const [showAuthNudge, setShowAuthNudge] = useState(true); // Control visibility via AuthNudgeBanner's logic
   const [email, setEmail] = useState('');
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [isRedFlagged, setIsRedFlagged] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
   const { openModal } = useApp();
 
   const scrollToBottom = () => {
@@ -53,6 +60,33 @@ export default function ChatPage() {
     }
     return () => window.removeEventListener('resume-chat', resumeChat);
   }, []);
+
+  useEffect(() => {
+    if (USE_REAL_CHAT && screen === 'active') {
+      const token = getOrCreateSessionToken();
+      const channel = createSessionChannel(token);
+      channelRef.current = channel;
+      
+      subscribeToMessages(channel, (payload) => {
+        if (payload.sender !== 'user') {
+          const now = new Date();
+          const time = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+          setMessages(prev => [...prev, { dir: 'in', text: payload.text, time }]);
+        }
+      });
+
+      // Track session for admin
+      const sessions = JSON.parse(localStorage.getItem('btl_waiting_sessions') || '[]');
+      if (!sessions.includes(token)) {
+        localStorage.setItem('btl_waiting_sessions', JSON.stringify([...sessions, token]));
+      }
+    }
+    return () => {
+      if (channelRef.current) {
+        channelRef.current.unsubscribe();
+      }
+    };
+  }, [screen]);
 
   const startChat = () => {
     setScreen('connecting');
@@ -96,13 +130,37 @@ export default function ChatPage() {
     setInputValue('');
     
     const newCount = messageCount + 1;
+    console.log('DEBUG: Message sent. newCount:', newCount, 'session:', !!session);
     setMessageCount(newCount);
     
-    if (newCount % 5 === 0 && !session) {
+    if (newCount >= 5 && !session) {
+      console.log('DEBUG: Triggering Auth Nudge');
       setShowAuthNudge(true);
     }
     
     triggerReply(chatIdx);
+
+    if (USE_REAL_CHAT) {
+      const token = getOrCreateSessionToken();
+      const scanResult = scanMessage(inputValue);
+      
+      if (scanResult.flagged) {
+        supabase.from('safety_flags').insert({
+          session_id: token,
+          trigger_phrase: scanResult.trigger,
+          message_snippet: inputValue.substring(0, 100),
+          severity: scanResult.severity
+        }).then();
+      }
+
+      if (channelRef.current) {
+        broadcastMessage(channelRef.current, { 
+          sender: 'user', 
+          text: inputValue, 
+          timestamp: new Date().toISOString() 
+        });
+      }
+    }
   };
 
   const raiseRedFlag = () => {
@@ -118,6 +176,9 @@ export default function ChatPage() {
   };
 
   const handleGoogleSignIn = async () => {
+    if (USE_REAL_AUTH) {
+      await signInAnonymously();
+    }
     localStorage.setItem('btl4_pending_chat', JSON.stringify({ messages, thought: openingThought }));
     await supabase.auth.signInWithOAuth({ 
       provider: 'google',
@@ -149,7 +210,15 @@ export default function ChatPage() {
 
         <div className="main-content">
           <div className="chat-outer">
-            {showAuthNudge && !session && (
+            {USE_REAL_AUTH && !session && showAuthNudge && (
+              <AuthNudgeBanner 
+                messageCount={messageCount} 
+                onSignIn={handleGoogleSignIn} 
+                onDismiss={() => setShowAuthNudge(false)} 
+              />
+            )}
+
+            {(!USE_REAL_AUTH) && showAuthNudge && !session && messageCount >= 5 && (
               <div className="paper-card" style={{ marginBottom: '20px', border: '1px solid var(--crimson)', padding: '15px' }}>
                 <p style={{ fontSize: '14px', marginBottom: '10px' }}>
                   ❖ <strong>Would you like to save this conversation and continue?</strong> Sign in with Google or email magic link.

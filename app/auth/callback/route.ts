@@ -10,7 +10,12 @@ export async function GET(request: Request) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      // Ensure restoreChat param is preserved if it's in the 'next' URL
+      const redirectUrl = new URL(next, origin);
+      if (searchParams.get('restoreChat') === 'true') {
+        redirectUrl.searchParams.set('restoreChat', 'true');
+      }
+      return NextResponse.redirect(redirectUrl.toString());
     }
   }
 

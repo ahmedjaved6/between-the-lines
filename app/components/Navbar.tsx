@@ -3,10 +3,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
+import { useApp } from '../context/AppContext';
+import Image from 'next/image';
 
 export default function Navbar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const { theme, toggleTheme } = useApp();
 
   const navLinks = [
     { name: 'Talk Now', href: '/', className: 'nav-talk' },
@@ -19,7 +22,14 @@ export default function Navbar() {
   return (
     <nav id="navbar" aria-label="Main navigation">
       <Link href="/" className="nav-brand" aria-label="Between the Lines Home">
-        <img src="/logo.png" alt="" style={{ height: '36px', width: 'auto' }} />
+        <Image 
+          src="/logo.png" 
+          alt="Between the Lines Logo" 
+          width={36} 
+          height={36} 
+          priority 
+          style={{ width: 'auto', height: '36px', filter: theme === 'dark' ? 'invert(1) brightness(1.5)' : 'none' }} 
+        />
       </Link>
 
       <button 
@@ -44,6 +54,15 @@ export default function Navbar() {
             </Link>
           </li>
         ))}
+        <li>
+          <button 
+            onClick={toggleTheme} 
+            aria-label="Toggle dark mode"
+            style={{ background: 'none', color: 'var(--ink-3)', fontSize: '14px', padding: '6px 13px' }}
+          >
+            <i className={`fas ${theme === 'light' ? 'fa-moon' : 'fa-sun'}`}></i>
+          </button>
+        </li>
         <li>
           <Link href="/profile" onClick={() => setIsOpen(false)}>
             <button className={pathname === '/profile' ? 'active' : ''} aria-label="Profile">

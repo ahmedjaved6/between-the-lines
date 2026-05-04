@@ -5,6 +5,8 @@ import { useApp } from '../context/AppContext';
 import ReactDiffViewer from 'react-diff-viewer-continued';
 import { useAuth } from '@/app/providers';
 
+export const USE_REAL_POLISH = false; // Feature flag
+
 export default function StoryStudioPage() {
   const { session } = useAuth();
   const { publishStory, publishedStories } = useApp();
@@ -13,12 +15,28 @@ export default function StoryStudioPage() {
   const [polishedData, setPolishedData] = useState({ heading: '', body: '', conclusion: '' });
   const [isLoading, setIsLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'raw' | 'diff' | 'polished'>('diff');
+  const [suggestedChanges, setSuggestedChanges] = useState<any[]>([]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handlePolish = async () => {
+    if (!USE_REAL_POLISH) {
+      // Mock diff logic
+      setPolishedData({
+        ...formData,
+        body: formData.body.replace(/very/g, 'significantly').replace(/good/g, 'exceptional')
+      });
+      setSuggestedChanges([
+        { type: 'readability', original: 'very', suggestion: 'significantly', position: 0 },
+        { type: 'readability', original: 'good', suggestion: 'exceptional', position: 10 }
+      ]);
+      setPolishMode(true);
+      setViewMode('diff');
+      return;
+    }
+
     setIsLoading(true);
     try {
       const response = await fetch('/api/polish', {
@@ -31,6 +49,7 @@ export default function StoryStudioPage() {
         ...formData,
         body: data.polished,
       });
+      setSuggestedChanges(data.changes || []);
       setPolishMode(true);
       setViewMode('diff');
     } catch (error) {
@@ -38,6 +57,10 @@ export default function StoryStudioPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const rejectChange = (index: number) => {
+    setSuggestedChanges(prev => prev.filter((_, i) => i !== index));
   };
 
   const handlePublish = (data: typeof formData) => {
@@ -128,6 +151,36 @@ export default function StoryStudioPage() {
                   <div style={{ padding: '20px', whiteSpace: 'pre-wrap' }}>{polishedData.body}</div>
                 )}
               </div>
+
+              {USE_REAL_POLISH && suggestedChanges.length > 0 && (
+                <div style={{ marginTop: '20px' }}>
+                  <h4 style={{ marginBottom: '10px' }}>Suggested Improvements ({suggestedChanges.length})</h4>
+                  <div style={{ display: 'grid', gap: '10px' }}>
+                    {suggestedChanges.map((change, i) => (
+                      <div key={i} className="paper-card" style={{ padding: '12px', borderLeft: `4px solid var(--${change.type === 'cliche' ? 'crimson' : 'sage'})`, background: '#faf9f6' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div>
+                            <span className={`tag ${change.type === 'cliche' ? 'crimson' : 'sage'}`} style={{ fontSize: '10px', marginBottom: '5px' }}>{change.type}</span>
+                            <div style={{ fontSize: '13px' }}>
+                              Found: <span style={{ textDecoration: 'line-through', color: 'var(--ink-3)' }}>"{change.original}"</span>
+                            </div>
+                            <div style={{ fontSize: '14px', marginTop: '4px', fontWeight: 500 }}>
+                              {change.suggestion}
+                            </div>
+                          </div>
+                          <button 
+                            className="btn-outline" 
+                            onClick={() => rejectChange(i)}
+                            style={{ padding: '4px 8px', fontSize: '11px' }}
+                          >
+                            Ignore
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {!session && (
                 <div className="tag crimson" style={{ marginTop: '20px', width: '100%', textAlign: 'center', padding: '10px' }}>
